@@ -17,7 +17,8 @@ Finally in the production run we keep a note of the heat values for the time dur
 ## Post Processing
 The file "Post_processing.ipynb" reads the temperature profile and required parameters. It then calculates the thermal conductivity using Fourier's Law.<br>
 
-**Important** : In structure creation we use interplane separation of 10A (To ensure no interations between differentlayers as we are concerned only with Basal plane conductivity). However here we are specifying it to be 3.35A (interplanar distance as observed experimentally in graphite). 
+**Important** : 
+In structure creation we use interplane separation of 10A (To ensure no interations between differentlayers as we are concerned only with Basal plane conductivity). However here we are specifying it to be 3.35A (interplanar distance as observed experimentally in graphite). 
 
 ## Additional Information
 Convergence studies for each parameter should be done ideally. However, it is observed that Graphene has a length dependence in $\kappa$ to upto about 16 $\mu$ m. Due to computational limitations we could go upto only about 1 $\mu$ m. Comparisions with literature shows similar trends. Possible reasons for deviations have been mentioned in the pdf file. 
