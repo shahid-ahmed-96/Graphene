@@ -1,0 +1,176 @@
+clear
+
+
+
+#=======================================================================================Metal units========================================================================================#
+
+#mass = grams/mole 
+
+#distance = Angstroms (1.0e-10 m)
+
+#time = picoseconds (1.0e-12 s)
+
+#energy = eV (1.60218e-19 J)
+
+#velocity = Angstroms/picosecond ( 100 m/s)
+
+#force = eV/Angstrom
+
+#torque = eV
+
+#temperature = Kelvin
+
+#pressure = bars
+
+#dynamic viscosity = Poise
+
+#charge = multiple of electron charge (1.0 is a proton)
+
+#dipole = charge*Angstroms
+
+#electric field = volts/Angstrom
+
+#density = gram/cm^dim
+
+#======================================================================================Initialization======================================================================================#
+
+variable			      u	index	  250 500 1000 2000 6000 8000 12000 16000 20000 	
+variable			      v	equal	  4		
+variable            t   equal   300
+
+units           		metal							                  # (time=ps, length A)
+dimension			      3							                      # Graphene is 2D, no interaction in 3rd by vacuum
+						                 
+boundary			      p p p							                  # Fixed in x and y
+atom_style          atomic                              # No charge interactions
+read_data			      graphene.${u}.${v}.lammps-data		# File where atomic positions are saved
+
+
+mass				        1		12.011          					      # Atomic mass of Carbon
+velocity            all     	create  $t 97200 mom yes rot yes dist gaussian
+
+
+pair_style      		tersoff						      # Using optimized tersoff for Graphene
+pair_coeff      		* * C.tersoff C					# Tersoff parameters from Tersoff file
+
+neighbor        		0.3 	bin						    #
+neigh_modify    		delay 0 	every 1				#
+
+#=======================================================================================Variables=========================================================================================#
+
+
+variable        		tlo       equal   280					  # Temperature of atoms in COLD reservoir
+variable        		thi	      equal   320					  # Temperature of atoms in HOT reservoir
+variable            p   	    equal   10					  # N_every
+variable            s         equal   100					  # N_repeat
+variable            d	  	    equal   $p*$s				  # N_freq
+variable            x_grid  	equal   ${u}     	  # no of unit cells in x-direction
+variable            y_grid  	equal   ${v}				  # no of unit cells in y-direction
+variable            rt1    	  equal   20        	  # reservoir thickness
+variable            dt      	equal   0.001     	  # timestep
+variable            r1        equal   1000000        # relaxation run
+variable            r2    	  equal   1000000  			# equilibrium run
+variable           	r3    	  equal   3000000  			# 1st stage run
+variable            r4      	equal   5000000				# final run
+timestep            ${dt}
+
+variable            gs1        equal   lx/${x_grid}
+variable            p0         equal    ${gs1}  
+
+#====================================================================================Relaxation of structure=============================================================================================#
+
+
+thermo              1000
+thermo_style        custom    step  vol   temp  press	pe  ke    etotal
+fix                 1         all   npt   temp  $t  $t    1.0    iso   0.0   0.0   5.0
+run                 ${r1}
+unfix               1
+
+#------------------------------------------------------------------------------------To fix Geometries-------------------------------------------------------------------------------------#
+
+ 
+
+variable                a      equal   	xhi
+variable                b      equal   	xlo
+variable                gs     equal   	lx/${x_grid}
+variable                q      equal  	${gs} 
+variable                rhs    equal   	$b			
+variable                c      equal   	${rt1}*${gs}	
+variable                rhe    equal   	($b+$c)	
+variable                rcs    equal   	($a+$b)/2
+variable		            rce    equal  	(${rcs}+$c)	
+variable                tdiff  equal   	c_Thot-c_Tcold	
+
+
+#-------------------------------------------------------------------------------------To set reservoirs------------------------------------------------------------------------------------#
+
+		
+region                  hot     	block   	${rhs}    ${rhe} INF INF INF INF  units box 
+region                  cold    	block   	${rcs}    ${rce} INF INF INF INF  units box
+		
+group                   HOT     	region  	hot
+group                   COLD    	region  	cold
+group                   SAMPLE    subtract  all   HOT COLD  
+
+
+#=======================================================================================First run==========================================================================================#
+
+thermo              1000
+thermo_style        custom    step  vol  temp  pe  ke    etotal
+
+fix                 2   all   nvt   temp  $t  $t  0.05
+run                 ${r2}
+unfix               2
+
+#-------------------------------------------------------------------------------------Equilibriation run-----------------------------------------------------------------------------------#
+
+
+fix                     3       all    nve
+fix                 		E_in    HOT       langevin    320   320   0.05    590804  tally   yes
+fix                 		E_out   COLD      langevin    280   280   0.05    28859   tally   yes
+
+compute         			  Thot 		HOT 		  temp/region   hot
+compute         			  Tcold 	COLD 		  temp/region   cold
+
+#compute                 	KE      	all ke/atom
+#variable                	kB      	equal 8.6173324e-5
+#variable                	TEMP    	atom c_KE/(${kB}*1.5)
+
+fix                     AVE     all ave/time $p $s $d v_tdiff ave running
+thermo_style            custom  step temp c_Thot c_Tcold f_E_in f_E_out v_tdiff f_AVE
+run                     ${r3}
+
+
+
+#-------------------------------------------------------------------------------------Production run final---------------------------------------------------------------------------------#
+
+fix       			    	  E_in 		HOT 	langevin  ${thi}  ${thi} 	0.05 	590804 	tally 	yes
+fix       			    	  E_out 	COLD 		langevin  ${tlo} 	${tlo} 	0.05 	28859 	tally 	yes
+
+thermo_style    			  custom 	step 	temp 		c_Thot 	c_Tcold 	f_E_in 	f_E_out 	v_tdiff 	f_AVE
+
+variable			    	    x_bin 	equal 	(1/(${x_grid}))
+variable			    	    value 	format 	x_bin %.10g
+compute      		    	  x_bins 	all 		chunk/atom 		bin/1d 	x 		lower 	${value} 	units 	reduced
+fix          		    	  4 all 	ave/chunk 	$p    $s    $d 	x_bins 	temp ave running file profile.${u}.${v}.${rt1}.langevin overwrite 
+#fix                     4 all   ave/chunk   $p    $s    $d  x_bins  temp ave running file profile.langevin overwrite
+variable 			    	    start_time equal time
+run             		    ${r4}
+
+#---------------------------------------------------------------------------------------Post Processing------------------------------------------------------------------------------------#
+
+
+variable          		Q_hot 	  equal  	f_E_in
+variable          		Q_cold 	  equal 	f_E_out
+variable            	len_y     equal   ly
+variable			        prod_time	equal	  ${r4}*${dt}
+variable			        len_x	    equal 	lx
+
+print           			${Q_hot} 	append 	heat_in_val.dat screen no
+print           			${Q_cold} 	append 	heat_out_val.dat screen no
+print               	${len_y} append length_y.dat screen no
+print				          ${prod_time} append time_val.dat screen no
+print				          ${len_x} append length_x.dat screen no
+
+next                  u
+jump                  in.graph_xg.lmp
