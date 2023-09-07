@@ -17,7 +17,7 @@ Finally in the production run we keep a note of the heat values for the time dur
 ## Post Processing
 The file "Post_processing.ipynb" reads the temperature profile and required parameters. It then calculates the thermal conductivity using Fourier's Law.<br>
 
-**Important** : 
+**Important** : <br>
 In structure creation we use interplane separation of 10A (To ensure no interations between differentlayers as we are concerned only with Basal plane conductivity). However here we are specifying it to be 3.35A (interplanar distance as observed experimentally in graphite). 
 
 ## Additional Information
