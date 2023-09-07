@@ -1,5 +1,5 @@
 # Graphene
-
+\begin<justify>
 ## Getting started
 The pdf version of the class presentation provides context for the workflow of the project.
 Kindly go through it.<br>
