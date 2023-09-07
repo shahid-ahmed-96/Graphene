@@ -9,4 +9,4 @@ These structures, i.e. atomic positions are written to LAMMPS readable files. ".
 For relaxation we use isobaric-isothermal (NPT) ensemble to let the atomic positions relax.  
 Next, weswitch on the thermostats and allow the system to equilibrate.
 Finally in the production run we keep a note of the heat values for the time duration and subsequently apply Fourier's law for obtaining the thermal conductivity. This is the Non-Equilibrium Molecular Dynamics (NEMD).
-We should do convergence studies for each parameter. HOwever, it is observed Graphene has a length dependence to upto about 16 $\mu$ m. Due to computational limitational we go upto only about 1 $\mu$ m
+We should do convergence studies for each parameter. HOwever, it is observed Graphene has a length dependence to upto about 16 $\mu$m. Due to computational limitational we go upto only about 1 $\mu$m
